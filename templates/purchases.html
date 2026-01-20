@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+{% if view_type == 'sales' %}
+  <h1>Sales History</h1>
+  <p>Items you have sold</p>
+{% else %}
+  <h1>Purchase History</h1>
+  <p>Items you have bought</p>
+{% endif %}
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Price</th>
+        {% if view_type == 'sales' %}
+          <th>Bought By</th>
+        {% else %}
+          <th>Sold By</th>
+        {% endif %}
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for purchase in purchases_data %}
+        <tr>
+          <td>{{ purchase['title'] }}</td>
+          <td>${{ '%.2f'|format(purchase['price']) }}</td>
+          {% if view_type == 'sales' %}
+            <td>{{ purchase['buyer_name'] }}</td>
+          {% else %}
+            <td>{{ purchase['seller_name'] }}</td>
+          {% endif %}
+          <td>{{ purchase['purchase_date'] }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center">
+            {% if view_type == 'sales' %}
+              No sales yet.
+            {% else %}
+              No purchases yet.
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

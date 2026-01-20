@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Edit Item</h1>
+<form method="post" enctype="multipart/form-data" class="row g-3">
+  <div class="col-12">
+    <label class="form-label">Title</label>
+    <input type="text" class="form-control" value="{{ item['title'] }}" disabled>
+    <small class="text-muted">Title cannot be changed</small>
+  </div>
+  <div class="col-12">
+    <label class="form-label">Description</label>
+    <textarea class="form-control" rows="3" disabled>{{ item['description'] }}</textarea>
+    <small class="text-muted">Description cannot be changed</small>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Price (USD)</label>
+    <input name="price" class="form-control" type="number" step="0.01" value="{{ item['price'] }}" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Quantity</label>
+    <input name="quantity" class="form-control" type="number" min="0" value="{{ item['quantity'] }}" required>
+  </div>
+  <div class="col-12">
+    <label class="form-label">Item Image</label>
+    {% if item['image_filename'] %}
+      <div class="mb-3">
+        <img src="{{ url_for('uploaded_file', filename=item['image_filename']) }}" style="max-width: 200px; max-height: 200px;" alt="{{ item['title'] }}">
+        <p><small class="text-muted">Current image</small></p>
+      </div>
+    {% else %}
+      <p><small class="text-muted">No image currently set</small></p>
+    {% endif %}
+    <input name="image" type="file" class="form-control" accept="image/png,image/jpeg,image/gif">
+    <small class="text-muted">Leave empty to keep current image. PNG, JPG, JPEG, or GIF (max 5MB)</small>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary">Update Item</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

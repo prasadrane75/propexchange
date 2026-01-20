@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Items for sale</h1>
+<div class="row">
+  {% for item in items %}
+    <div class="col-md-4 mb-3">
+      <div class="card h-100">
+        {% if item['image_filename'] %}
+          <img src="{{ url_for('uploaded_file', filename=item['image_filename']) }}" class="card-img-top" style="height: 250px; object-fit: cover;" alt="{{ item['title'] }}">
+        {% else %}
+          <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 250px;">
+            <span class="text-muted">No image</span>
+          </div>
+        {% endif %}
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">{{ item['title'] }}</h5>
+          <p class="card-text">{{ item['description'] }}</p>
+          <p class="mt-auto"><strong>${{ '%.2f'|format(item['price']) }}</strong></p>
+          <p>Quantity: {{ item['quantity'] }}</p>
+          <p><small class="text-muted">Seller: {{ item['username'] or 'Unknown' }}</small></p>
+          {% if session.get('role') == 'seller' and session.get('user_id') == item['seller_id'] %}
+            <div class="btn-group mb-2" role="group">
+              <a href="{{ url_for('edit', item_id=item['id']) }}" class="btn btn-sm btn-warning">Edit</a>
+            </div>
+          {% endif %}
+          {% if session.get('user_id') %}
+            <form method="post" action="{{ url_for('buy', item_id=item['id']) }}">
+              <button class="btn btn-primary w-100" {% if item['quantity'] <= 0 %}disabled{% endif %}>Buy</button>
+            </form>
+          {% else %}
+            <p><small><a href="{{ url_for('login') }}">Login to buy</a></small></p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p>No items listed yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

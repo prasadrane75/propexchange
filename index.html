@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Marketplace</title>
+    <style>
+      :root {
+        --bg: #f3efe8;
+        --panel: #fff7ea;
+        --ink: #1f1a17;
+        --accent: #c4553a;
+        --muted: #74675f;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Georgia", "Times New Roman", serif;
+        background: radial-gradient(circle at 15% 10%, #fff0d9 0%, #f3efe8 45%, #efe3d4 100%);
+        color: var(--ink);
+        min-height: 100vh;
+      }
+
+      header {
+        padding: 2rem clamp(1rem, 3vw, 3rem) 1rem;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(2rem, 4.5vw, 3.2rem);
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      main {
+        display: grid;
+        gap: 1.5rem;
+        padding: 0 clamp(1rem, 3vw, 3rem) 3rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      section {
+        background: var(--panel);
+        border: 2px solid var(--ink);
+        padding: 1.25rem;
+        box-shadow: 8px 8px 0 var(--ink);
+      }
+
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.35rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.95rem;
+        margin: 0.6rem 0 0.3rem;
+      }
+
+      input, select, button {
+        width: 100%;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.95rem;
+        border: 2px solid var(--ink);
+        background: #fffdf8;
+        font-family: inherit;
+      }
+
+      button {
+        background: var(--accent);
+        color: #fffaf4;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 0.8rem;
+      }
+
+      .muted { color: var(--muted); }
+
+      .grid-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .card {
+        border: 2px solid var(--ink);
+        padding: 0.75rem;
+        background: #fffdf8;
+      }
+
+      .card img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        border: 2px solid var(--ink);
+        margin-bottom: 0.5rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .actions button {
+        flex: 1;
+      }
+
+      .hidden { display: none; }
+
+      @media (max-width: 700px) {
+        .actions { flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Marketplace</h1>
+      <p class="tagline">Register as a buyer or seller. Sellers list items; buyers place orders.</p>
+    </header>
+
+    <main>
+      <section id="auth">
+        <h2>Register / Sign in</h2>
+        <label for="name">Name</label>
+        <input id="name" type="text" placeholder="Your name" />
+        <label for="role">Role</label>
+        <select id="role">
+          <option value="buyer">Buyer</option>
+          <option value="seller">Seller</option>
+        </select>
+        <button id="register">Continue</button>
+        <p class="muted" id="current-user">Not signed in.</p>
+      </section>
+
+      <section id="seller-panel" class="hidden">
+        <h2>Seller Console</h2>
+        <label for="item-name">Item name</label>
+        <input id="item-name" type="text" />
+        <label for="item-price">Price</label>
+        <input id="item-price" type="number" min="0" step="0.01" />
+        <label for="item-qty">Quantity</label>
+        <input id="item-qty" type="number" min="1" step="1" />
+        <label for="item-image">Image URL</label>
+        <input id="item-image" type="url" placeholder="https://..." />
+        <button id="add-item">Save item</button>
+        <p class="muted" id="seller-hint">Add items and manage your orders.</p>
+      </section>
+
+      <section>
+        <h2>Marketplace Listings</h2>
+        <div id="listings" class="grid-list"></div>
+      </section>
+
+      <section id="orders-panel" class="hidden">
+        <h2>Orders to Ship</h2>
+        <div id="orders" class="grid-list"></div>
+      </section>
+    </main>
+
+    <script>
+      const storage = {
+        get(key, fallback) {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        },
+        set(key, value) {
+          localStorage.setItem(key, JSON.stringify(value));
+        },
+      };
+
+      const elements = {
+        name: document.querySelector("#name"),
+        role: document.querySelector("#role"),
+        register: document.querySelector("#register"),
+        currentUser: document.querySelector("#current-user"),
+        sellerPanel: document.querySelector("#seller-panel"),
+        ordersPanel: document.querySelector("#orders-panel"),
+        itemName: document.querySelector("#item-name"),
+        itemPrice: document.querySelector("#item-price"),
+        itemQty: document.querySelector("#item-qty"),
+        itemImage: document.querySelector("#item-image"),
+        addItem: document.querySelector("#add-item"),
+        listings: document.querySelector("#listings"),
+        orders: document.querySelector("#orders"),
+      };
+
+      let editingItemId = null;
+
+      function getUsers() {
+        return storage.get("users", []);
+      }
+
+      function getItems() {
+        return storage.get("items", []);
+      }
+
+      function getOrders() {
+        return storage.get("orders", []);
+      }
+
+      function getCurrentUser() {
+        return storage.get("currentUser", null);
+      }
+
+      function setCurrentUser(user) {
+        storage.set("currentUser", user);
+      }
+
+      function renderAuth() {
+        const user = getCurrentUser();
+        if (user) {
+          elements.currentUser.textContent = `Signed in as ${user.name} (${user.role}).`;
+          elements.name.value = user.name;
+          elements.role.value = user.role;
+        } else {
+          elements.currentUser.textContent = "Not signed in.";
+          elements.name.value = "";
+          elements.role.value = "buyer";
+        }
+
+        elements.sellerPanel.classList.toggle("hidden", !user || user.role !== "seller");
+        elements.ordersPanel.classList.toggle("hidden", !user || user.role !== "seller");
+      }
+
+      function renderListings() {
+        const user = getCurrentUser();
+        const items = getItems();
+        elements.listings.innerHTML = "";
+
+        if (!items.length) {
+          elements.listings.innerHTML = "<p class=\"muted\">No items yet.</p>";
+          return;
+        }
+
+        items.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <img src="${item.image || "https://picsum.photos/seed/market/400/240"}" alt="${item.name}" />
+            <strong>${item.name}</strong>
+            <p>$${item.price.toFixed(2)} · Qty ${item.quantity}</p>
+            <p class="muted">Seller: ${item.sellerName}</p>
+          `;
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+
+          if (user && user.role === "buyer") {
+            const buyButton = document.createElement("button");
+            buyButton.textContent = "Buy";
+            buyButton.onclick = () => placeOrder(item.id);
+            actions.appendChild(buyButton);
+          }
+
+          if (user && user.role === "seller" && user.id === item.sellerId) {
+            const editButton = document.createElement("button");
+            editButton.textContent = "Edit";
+            editButton.onclick = () => startEdit(item.id);
+            actions.appendChild(editButton);
+          }
+
+          if (!actions.childElementCount) {
+            const note = document.createElement("p");
+            note.className = "muted";
+            note.textContent = "Sign in as a buyer to purchase.";
+            card.appendChild(note);
+          } else {
+            card.appendChild(actions);
+          }
+
+          elements.listings.appendChild(card);
+        });
+      }
+
+      function renderOrders() {
+        const user = getCurrentUser();
+        const orders = getOrders();
+        elements.orders.innerHTML = "";
+
+        if (!user || user.role !== "seller") {
+          return;
+        }
+
+        const sellerOrders = orders.filter((order) => order.sellerId === user.id);
+        if (!sellerOrders.length) {
+          elements.orders.innerHTML = "<p class=\"muted\">No orders yet.</p>";
+          return;
+        }
+
+        sellerOrders.forEach((order) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <strong>${order.itemName}</strong>
+            <p>Buyer: ${order.buyerName}</p>
+            <p>Quantity: ${order.quantity}</p>
+            <p>Status: ${order.status}</p>
+          `;
+          elements.orders.appendChild(card);
+        });
+      }
+
+      function register() {
+        const name = elements.name.value.trim();
+        const role = elements.role.value;
+        if (!name) {
+          alert("Please enter a name.");
+          return;
+        }
+
+        const users = getUsers();
+        let user = users.find((u) => u.name.toLowerCase() === name.toLowerCase());
+        if (!user) {
+          user = { id: crypto.randomUUID(), name, role };
+          users.push(user);
+          storage.set("users", users);
+        } else {
+          user.role = role;
+          storage.set("users", users);
+        }
+
+        setCurrentUser(user);
+        renderAuth();
+        renderListings();
+        renderOrders();
+      }
+
+      function saveItem() {
+        const user = getCurrentUser();
+        if (!user || user.role !== "seller") {
+          alert("Only sellers can list items.");
+          return;
+        }
+
+        const name = elements.itemName.value.trim();
+        const price = Number(elements.itemPrice.value);
+        const quantity = Number(elements.itemQty.value);
+        const image = elements.itemImage.value.trim();
+
+        if (!name || !price || !quantity) {
+          alert("Please fill out name, price, and quantity.");
+          return;
+        }
+
+        const items = getItems();
+
+        if (editingItemId) {
+          const item = items.find((i) => i.id === editingItemId);
+          if (!item) return;
+          item.name = name;
+          item.price = price;
+          item.quantity = quantity;
+          item.image = image;
+          editingItemId = null;
+          elements.addItem.textContent = "Save item";
+        } else {
+          items.push({
+            id: crypto.randomUUID(),
+            name,
+            price,
+            quantity,
+            image,
+            sellerId: user.id,
+            sellerName: user.name,
+          });
+        }
+
+        storage.set("items", items);
+        elements.itemName.value = "";
+        elements.itemPrice.value = "";
+        elements.itemQty.value = "";
+        elements.itemImage.value = "";
+        renderListings();
+      }
+
+      function startEdit(itemId) {
+        const items = getItems();
+        const item = items.find((i) => i.id === itemId);
+        if (!item) return;
+        editingItemId = itemId;
+        elements.itemName.value = item.name;
+        elements.itemPrice.value = item.price;
+        elements.itemQty.value = item.quantity;
+        elements.itemImage.value = item.image;
+        elements.addItem.textContent = "Update item";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function placeOrder(itemId) {
+        const user = getCurrentUser();
+        if (!user || user.role !== "buyer") {
+          alert("Only registered buyers can place orders.");
+          return;
+        }
+
+        const items = getItems();
+        const item = items.find((i) => i.id === itemId);
+        if (!item || item.quantity < 1) {
+          alert("Item is out of stock.");
+          return;
+        }
+
+        item.quantity -= 1;
+        storage.set("items", items);
+
+        const orders = getOrders();
+        orders.push({
+          id: crypto.randomUUID(),
+          itemId: item.id,
+          itemName: item.name,
+          sellerId: item.sellerId,
+          buyerId: user.id,
+          buyerName: user.name,
+          quantity: 1,
+          status: "Pending shipment",
+        });
+        storage.set("orders", orders);
+
+        renderListings();
+        renderOrders();
+        alert("Order placed.");
+      }
+
+      elements.register.addEventListener("click", register);
+      elements.addItem.addEventListener("click", saveItem);
+
+      renderAuth();
+      renderListings();
+      renderOrders();
+    </script>
+  </body>
+</html>
